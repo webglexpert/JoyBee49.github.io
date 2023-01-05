@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+        <title>BabylonJS</title>
+
+        <!-- Babylon.js -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+        <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
+        <script src="https://preview.babylonjs.com/ammo.js"></script>
+        <script src="https://preview.babylonjs.com/cannon.js"></script>
+        <script src="https://preview.babylonjs.com/Oimo.js"></script>
+        <script src="https://preview.babylonjs.com/earcut.min.js"></script>
+        <script src="https://preview.babylonjs.com/babylon.js"></script>
+        <script src="https://preview.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+        <script src="https://preview.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+        <script src="https://preview.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+        <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+        <script src="https://preview.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+        <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
+        <script src="https://preview.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+
+        <style>
+            html, body {
+                overflow: hidden;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            #renderCanvas {
+                width: 100%;
+                height: 100%;
+                touch-action: none;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="renderCanvas"></canvas>
+        <script>
+            var canvas = document.getElementById("renderCanvas");
+
+            var startRenderLoop = function (engine, canvas) {
+                engine.runRenderLoop(function () {
+                    if (sceneToRender && sceneToRender.activeCamera) {
+                        sceneToRender.render();
+                    }
+                });
+            }
+
+            var engine = null;
+            var scene = null;
+            var sceneToRender = null;
+            var createDefaultEngine = function() {
+                return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true,  disableWebGL2Support: false});
+            };
+
+            var createScene = async function () {
+                var scene = new BABYLON.Scene(engine);
+                var camera = new BABYLON.ArcRotateCamera("Camera", 0, 0, 10, new BABYLON.Vector3(0, 1, 0), scene);
+
+                // This positions the camera
+                camera.setPosition(new BABYLON.Vector3(0, 0, 10));
+                camera.upperBetaLimit=Math.PI/2;
+                camera.lowerRadiusLimit=5;
+                camera.upperRadiusLimit=10;
+                camera.inertia = 0.5;
+
+                // This attaches the camera to the canvas
+                camera.attachControl(canvas, true);
+
+                var hdrTexture = BABYLON.CubeTexture.CreateFromPrefilteredData("assets/texture/1.dds", scene);
+                scene.clearColor = new BABYLON.Color3(0.95, 0.95, 0.95);
+                scene.environmentTexture = hdrTexture;
+            
+                // Light
+                var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+
+                light.intensity = 0.7;
+
+                var matStd = new BABYLON.StandardMaterial("matstd", scene);
+                matStd.diffuseTexture = new BABYLON.Texture("assets/texture/shadow.png", scene);
+                matStd.diffuseTexture.hasAlpha = true;
+                matStd.useAlphaFromDiffuseTexture = true;
+            
+                /*************************************Meshes****************************************/
+                // Ground
+                var ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 3.5, height: 4.5 }, scene);
+
+                var matStd = new BABYLON.StandardMaterial("matstd", scene);
+                matStd.diffuseTexture = new BABYLON.Texture("assets/texture/shadow.png", scene);
+                matStd.diffuseTexture.hasAlpha = true;
+                matStd.useAlphaFromDiffuseTexture = true;
+                ground.material=matStd;
+
+                ground.position = new BABYLON.Vector3(0, -0.1, 0);
+
+                // const axes = new BABYLON.AxesViewer(scene, 0.5);
+            
+                await BABYLON.SceneLoader.AppendAsync("assets/models/Barn_10x12_Roof_Metal/", "Barn_10x12_Roof_Metal.glb", scene, function (scene) {
+                // scene.createDefaultCameraOrLight(true, true, true);
+                });
+
+                await BABYLON.SceneLoader.AppendAsync("assets/models/Barn_10x12_Siding/", "Barn_10x12_Siding.glb", scene);
+
+                await BABYLON.SceneLoader.AppendAsync("assets/models/Barn_10x12_Trim/", "Barn_10X12_Trim.glb", scene, function (scene) {
+                    // scene.createDefaultCameraOrLight(true, true, true);
+                });
+
+                await BABYLON.SceneLoader.AppendAsync("assets/models/DoubleDoor/", "DoubleDoor.glb", scene, function (scene) {
+                });
+
+                await BABYLON.SceneLoader.AppendAsync("assets/models/Window_2x3/", "Window_2x3.glb", scene, function (scene) {
+                    // scene.createDefaultCameraOrLight(true, true, true);
+                });
+
+                var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI", true, scene);
+
+                var barn_siding, doubledoor, window;
+
+                barn_siding = scene.getMeshByName("Barn_10x12_Siding");
+                barn_siding.material._albedoTexture = null;
+                barn_siding.material._albedoColor = new BABYLON.Color3(0.2,0.2,0.2);
+
+                doubledoor = scene.getMeshByName("DoubleDoor");
+                doubledoor.enableEdgesRendering();
+                doubledoor.edgesColor = new BABYLON.Color4(0.5, 0.5, 0.5, 1);
+                doubledoor.edgesWidth = 0.0;
+
+                window = scene.getMeshByName("Window_2x3");
+
+                var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+                var showWindowButton = BABYLON.GUI.Button.CreateSimpleButton("but1", "Show window");
+                showWindowButton.width = "220px"
+                showWindowButton.height = "40px";
+                showWindowButton.background = "white";
+                
+                showWindowButton.onPointerUpObservable.add(function() {
+                    doubledoor.setEnabled((doubledoor.isEnabled() ? false : true));
+                    // showWindowButton.setCon
+                });
+
+                advancedTexture.addControl(showWindowButton);
+
+                var dropdownA = new MenuOptions(advancedTexture, {width: 210, height: 40});
+                dropdownA.button.children[0].text = "Change color";
+                dropdownA.top = "10px";
+                dropdownA.left = "10px";
+                dropdownA.addOption("black", function() {
+                    barn_siding.material._albedoColor = new BABYLON.Color3(0.5,0.5,0.5);
+                });
+                dropdownA.addOption("red", function() {
+                    barn_siding.material._albedoColor = new BABYLON.Color3(0.2,0,0);
+                });
+                dropdownA.addOption("blue", function() {
+                    barn_siding.material._albedoColor = new BABYLON.Color3(0,0,0.4);
+                });
+                dropdownA.addOption("green", function() {
+                    barn_siding.material._albedoColor = new BABYLON.Color3(0,0.2,0);
+                });
+                dropdownA.addOption("white", function() {
+                    barn_siding.material._albedoColor = new BABYLON.Color3(0.8,0.8,0.8);
+                });
+
+                var dragableObjects = [
+                    {
+                        mesh : doubledoor,
+                        type : "door",
+                        limit : [ -0.9, 0.9, 0,0 ]
+                    },
+                    {
+                        mesh : window,
+                        type : "window",
+                        limit : [ -1.1, 1.1, 0.5, 1.8 ]
+                    }
+                ];
+
+                //attach an own pointerDragBehavoir for every mesh in dragableMeshes-array
+                for(var i = 0; i < dragableObjects.length; i++) {
+                    attachOwnPointerDragBehavior(dragableObjects[i]);
+                    dragableObjects[i].mesh.enableEdgesRendering();
+                    dragableObjects[i].mesh.edgesWidth = 0.0;
+                    dragableObjects[i].mesh.edgesColor = new BABYLON.Color4(0.9, 0.8, 0.8, 1);
+                }
+
+
+                function attachOwnPointerDragBehavior(object) {
+                    var pointerDragBehavior = new BABYLON.PointerDragBehavior();
+                    switch(object.type){
+                        case "door":
+                            pointerDragBehavior._options= {
+                                dragAxis : new BABYLON.Vector3(1,0,0)
+                            };
+                            break;
+                        case "window":
+                            pointerDragBehavior._options= {
+                                dragPlaneNormal: new BABYLON.Vector3(0,0,1)
+                            };
+                            break;
+                        default:
+                            break;
+                    }
+
+                    pointerDragBehavior.dragDeltaRatio = 1;
+                    
+                    pointerDragBehavior.validateDrag = (targetPosition) => {
+                        switch(object.type) {
+                        case "window":
+                            if((targetPosition.x < object.limit[0])) {
+                                targetPosition.x = object.limit[0]
+                            }
+                            if(targetPosition.x > object.limit[1] ) {
+                                targetPosition.x = object.limit[1]
+                            }
+                            if((targetPosition.y < object.limit[2])) {
+                                targetPosition.y = object.limit[2]
+                            }
+                            if(targetPosition.y > object.limit[3] ) {
+                                targetPosition.y = object.limit[3]
+                            }
+                            if((targetPosition.x >= object.limit[0]) && (targetPosition.x <= object.limit[1]) && (targetPosition.y >= object.limit[2]) && (targetPosition.y <= object.limit[3])) {
+                                return true;
+                            }
+                            break;
+                        case "door":
+
+                            if((targetPosition.x < object.limit[0])){
+                                targetPosition.x = object.limit[0]
+                            }
+                            if(targetPosition.x > object.limit[1] ){
+                                targetPosition.x = object.limit[1]
+                            }
+                            if((targetPosition.x >= object.limit[0])&&(targetPosition.x <= object.limit[1])){
+                                return true;
+                            }
+                            break;
+                        }
+                    }
+
+                    pointerDragBehavior.useObjectOrientationForDragging = false;
+            
+                    // Listen to drag events
+                    pointerDragBehavior.onDragStartObservable.add((event)=>{
+                        object.mesh.edgesWidth = 2.0;
+
+                        
+                    });
+
+                    pointerDragBehavior.onDragObservable.add((event)=>{
+                        // console.log(mesh.position);
+                    });
+
+                    pointerDragBehavior.onDragEndObservable.add((event)=>{
+                        object.mesh.edgesWidth = 0.0;
+                    });
+                    object.mesh.addBehavior(pointerDragBehavior);
+
+                    }
+            
+                return scene;
+            };
+
+            class MenuOptions
+            {
+                constructor(advancedTexture, options = {})
+                {
+                    let width = (options.width || 210)+"px";
+                    this.height = (options.height || 40)+"px";
+                    this.color = options.color || "black";
+                    this.background = options.background || "white";
+            
+                    this.advancedTexture = advancedTexture;
+            
+                    // Container
+                    this.container = new BABYLON.GUI.Container();
+                    this.container.width = width;
+                    this.container.verticalAlignment = options.align || BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
+                    this.container.horizontalAlignment = options.valign || BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+                    this.container.isHitTestVisible = false;
+            
+                    // Primary button
+                    this.button = BABYLON.GUI.Button.CreateSimpleButton(null, "Please Select");
+                    this.button.height = this.height;
+                    this.button.background = this.background;
+                    this.button.color = this.color;
+                    this.button.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
+            
+                    // Options panel
+                    this.options = new BABYLON.GUI.StackPanel();
+                    this.options.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
+                    this.options.top = this.height;   
+                    this.options.isVisible = false;
+                    this.options.isVertical = true;
+            
+                    this.button.onPointerUpObservable.add(() => {
+                        this.options.isVisible = !this.options.isVisible;
+                    });
+            
+                    this.container.onPointerEnterObservable.add(() => {
+                        this.container.zIndex = 555; //some big value
+                    });
+            
+                    this.container.onPointerOutObservable.add(() => {
+                        this.container.zIndex = 0; //back to original
+                        this.options.isVisible = false;
+                    });
+            
+                    // add controls
+                    this.advancedTexture.addControl(this.container);
+                    this.container.addControl(this.button);
+                    this.container.addControl(this.options);
+                }
+            
+                get top() {
+                    return this.container.top;
+                }
+            
+                set top(value) {
+                this.container.top = value;
+                }
+            
+                get left() {
+                    return this.container.left;
+                }
+            
+                set left(value) {
+                this.container.left = value;
+                }
+            
+                addOption(text, callback)
+                {
+                    var button = BABYLON.GUI.Button.CreateSimpleButton(null, text);
+                    button.height = this.height;
+                    button.paddingTop = "-1px";
+                    button.background = this.background;
+                    button.color = this.color;
+                    button.alpha = 1.0;
+                    button.onPointerUpObservable.add(() => {
+                        this.options.isVisible = false;            
+                    });        
+                    button.onPointerClickObservable.add(callback); 
+                    this.options.addControl(button);
+                }
+            }
+
+            window.initFunction = async function() {
+                var asyncEngineCreation = async function() {
+                    try {
+                        return createDefaultEngine();
+                    } catch(e) {
+                        console.log("the available createEngine function failed. Creating the default engine instead");
+                        return createDefaultEngine();
+                        }
+                }
+
+                window.engine = await asyncEngineCreation();
+                if (!engine) throw 'engine should not be null.';
+                startRenderLoop(engine, canvas);
+                window.scene = createScene();
+            };
+
+            initFunction().then(() => {
+                scene.then(returnedScene => { sceneToRender = returnedScene; });
+            });
+
+            // Resize
+            window.addEventListener("resize", function () {
+                engine.resize();
+            });
+        </script>
+    </body>
+</html>
